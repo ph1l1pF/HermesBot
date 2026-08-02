@@ -1,0 +1,44 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a href="/">← Zurück</a>
+<h1>Review: {{ draft.shopify_order_name }}</h1>
+
+<section class="panel">
+  <p><strong>Status:</strong> {{ draft.status }}</p>
+  <p><strong>Shopify Order:</strong> {{ draft.shopify_order_name }} ({{ draft.customer_name or 'kein Name' }})</p>
+</section>
+
+<form method="post" action="/drafts/{{ draft.id }}" class="panel form-grid">
+  <h2>Lieferadresse (editierbar)</h2>
+  <label>Name <input name="delivery_name" value="{{ draft.delivery_address.name }}"></label>
+  <label>Straße <input name="delivery_street" value="{{ draft.delivery_address.street }}"></label>
+  <label>PLZ <input name="delivery_post_code" value="{{ draft.delivery_address.post_code }}"></label>
+  <label>Stadt <input name="delivery_city" value="{{ draft.delivery_address.city }}"></label>
+  <label>Land <input name="delivery_country_code" value="{{ draft.delivery_address.country_code }}"></label>
+
+  <h2>Paketdaten</h2>
+  <label>Länge (cm) <input type="number" name="package_length_cm" value="{{ draft.package.length_cm }}"></label>
+  <label>Breite (cm) <input type="number" name="package_width_cm" value="{{ draft.package.width_cm }}"></label>
+  <label>Höhe (cm) <input type="number" name="package_height_cm" value="{{ draft.package.height_cm }}"></label>
+  <label>Gewicht (kg) <input step="0.1" type="number" name="package_weight_kg" value="{{ draft.package.weight_kg }}"></label>
+  <label>Packstück-Typ <input name="package_type" value="{{ draft.package.package_type }}"></label>
+  <label>Inhalt <input name="package_content" value="{{ draft.package.content }}"></label>
+  <label>Notizen <textarea name="notes">{{ draft.notes }}</textarea></label>
+  <button type="submit">Speichern</button>
+</form>
+
+<section class="panel">
+  <form method="post" action="/drafts/{{ draft.id }}/quote" style="display:inline"><button type="submit">Quotation erzeugen</button></form>
+  <form method="post" action="/drafts/{{ draft.id }}/confirm" style="display:inline"><button type="submit">Auftrag an Cargoboard senden</button></form>
+  <form method="post" action="/drafts/{{ draft.id }}/delete" style="display:inline"><button type="submit" class="secondary">Entwurf löschen</button></form>
+</section>
+
+{% if draft.quotation %}
+  <section class="panel"><h2>Quotation Response</h2><pre>{{ draft.quotation | tojson(indent=2) }}</pre></section>
+{% endif %}
+
+{% if draft.order %}
+  <section class="panel"><h2>Order Response</h2><pre>{{ draft.order | tojson(indent=2) }}</pre></section>
+{% endif %}
+{% endblock %}

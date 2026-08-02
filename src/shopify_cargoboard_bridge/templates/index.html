@@ -1,0 +1,45 @@
+
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ settings.app_title }}</h1>
+<p class="muted">Internes Review-Tool: Shopify-Bestellungen laden, manuell prüfen, dann erst Cargoboard beauftragen.</p>
+
+<section class="panel">
+  <h2>Status</h2>
+  <ul>
+    <li>Shopify: {{ 'konfiguriert' if settings.has_shopify else 'fehlt' }}</li>
+    <li>Cargoboard: {{ 'konfiguriert' if settings.has_cargoboard else 'fehlt' }}</li>
+    <li>Rechnungsadresse: {{ 'konfiguriert' if settings.has_billing_address else 'fehlt' }}</li>
+  </ul>
+  <form method="post" action="/sync"><button type="submit">Shopify-Bestellungen synchronisieren</button></form>
+</section>
+
+{% if error %}<section class="panel error">{{ error }}</section>{% endif %}
+
+<section class="grid">
+  <div class="panel">
+    <h2>Entwürfe</h2>
+    {% if drafts %}
+      <ul class="list">
+        {% for draft in drafts %}
+          <li><a href="/drafts/{{ draft.id }}">{{ draft.shopify_order_name }} — {{ draft.status }}</a></li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">Noch keine Entwürfe vorhanden.</p>
+    {% endif %}
+  </div>
+  <div class="panel">
+    <h2>Aktuelle Shopify-Bestellungen</h2>
+    {% if orders %}
+      <ul class="list">
+        {% for order in orders %}
+          <li>{{ order.name }} — {{ order.customer_name or 'ohne Kundenname' }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">Keine Bestellungen geladen oder keine Shopify-Zugangsdaten gesetzt.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

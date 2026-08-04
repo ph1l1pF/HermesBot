@@ -8,8 +8,8 @@ body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; ba
 .list { padding-left: 18px; }
 .form-grid { display: grid; gap: 10px; }
 label { display: grid; gap: 4px; font-weight: 600; }
-input, textarea, button { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
-button { background: #1f4a6e; color: white; border: none; cursor: pointer; }
+input, textarea, button, .button { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #cbd5e1; }
+button, .button { background: #1f4a6e; color: white; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
 button.secondary { background: #64748b; }
 pre { overflow: auto; background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; }
 a { color: #1f4a6e; }

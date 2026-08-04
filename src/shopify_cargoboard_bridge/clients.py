@@ -6,21 +6,27 @@ from typing import Any
 
 import httpx
 
-from .config import Settings
+from .config import Settings, normalize_shop_domain
 from .models import Address, ShopifyOrderSummary, ShippingDraft
 
 
 class ShopifyClient:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, access_token: str):
         self.settings = settings
-        self.base = f"https://{settings.shopify_shop}/admin/api/{settings.shopify_api_version}"
+        self.access_token = access_token.strip()
+        self.shop = normalize_shop_domain(settings.shopify_shop)
+        self.base = f"https://{self.shop}/admin/api/{settings.shopify_api_version}"
         self.headers = {
-            "X-Shopify-Access-Token": settings.shopify_token,
+            "X-Shopify-Access-Token": self.access_token,
             "Accept": "application/json",
         }
 
+    @property
+    def ready(self) -> bool:
+        return bool(self.shop and self.access_token)
+
     def list_orders(self, limit: int = 20) -> list[ShopifyOrderSummary]:
-        if not self.settings.has_shopify:
+        if not self.ready:
             return []
         url = f"{self.base}/orders.json"
         params = {

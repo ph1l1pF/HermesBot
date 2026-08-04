@@ -7,11 +7,15 @@
 <section class="panel">
   <h2>Status</h2>
   <ul>
-    <li>Shopify: {{ 'konfiguriert' if settings.has_shopify else 'fehlt' }}</li>
+    <li>Shopify OAuth: {{ 'verbunden' if shopify_connected else 'nicht verbunden' }}</li>
+    <li>Shopify Shop: {{ shopify_shop or 'fehlt' }}</li>
     <li>Cargoboard: {{ 'konfiguriert' if settings.has_cargoboard else 'fehlt' }}</li>
     <li>Rechnungsadresse: {{ 'konfiguriert' if settings.has_billing_address else 'fehlt' }}</li>
   </ul>
-  <form method="post" action="/sync"><button type="submit">Shopify-Bestellungen synchronisieren</button></form>
+  {% if shopify_connect_url and not shopify_connected %}
+    <p><a class="button" href="{{ shopify_connect_url }}">Shopify verbinden</a></p>
+  {% endif %}
+  <form method="post" action="/sync"><button type="submit" {% if not shopify_connected %}disabled{% endif %}>Shopify-Bestellungen synchronisieren</button></form>
 </section>
 
 {% if error %}<section class="panel error">{{ error }}</section>{% endif %}
@@ -38,7 +42,7 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p class="muted">Keine Bestellungen geladen oder keine Shopify-Zugangsdaten gesetzt.</p>
+      <p class="muted">Keine Bestellungen geladen.</p>
     {% endif %}
   </div>
 </section>

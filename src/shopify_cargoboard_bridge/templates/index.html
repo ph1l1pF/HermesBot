@@ -1,53 +1,71 @@
 
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ settings.app_title }}</h1>
-<p class="muted">Internes Review-Tool: Shopify-Bestellungen laden, manuell prüfen, dann erst Cargoboard beauftragen.</p>
+<header class="hero card">
+  <div>
+    <p class="eyebrow">Internal Ops</p>
+    <h1>{{ settings.app_title }}</h1>
+    <p class="muted">Shopify-Bestellungen prüfen, Fulfillment-Status im Blick behalten und danach erst Cargoboard beauftragen.</p>
+  </div>
+  <div class="hero-actions">
+    {% if shopify_connect_url and not shopify_connected %}
+      <a class="button primary" href="{{ shopify_connect_url }}">Shopify verbinden</a>
+    {% endif %}
+    <form method="post" action="/sync">
+      <button type="submit" class="secondary" {% if not shopify_connected %}disabled{% endif %}>Synchronisieren</button>
+    </form>
+  </div>
+</header>
 
-<section class="panel">
-  <h2>Status</h2>
-  <ul>
-    <li>Shopify OAuth: {{ 'verbunden' if shopify_connected else 'nicht verbunden' }}</li>
-    <li>Shopify Shop: {{ shopify_shop or 'fehlt' }}</li>
-    <li>Cargoboard: {{ 'konfiguriert' if settings.has_cargoboard else 'fehlt' }}</li>
-    <li>Rechnungsadresse: {{ 'konfiguriert' if settings.has_billing_address else 'fehlt' }}</li>
-  </ul>
-  {% if shopify_connect_url and not shopify_connected %}
-    <p><a class="button" href="{{ shopify_connect_url }}">Shopify verbinden</a></p>
-  {% endif %}
-  <form method="post" action="/sync"><button type="submit" {% if not shopify_connected %}disabled{% endif %}>Shopify-Bestellungen synchronisieren</button></form>
+{% if error %}<section class="card error">{{ error }}</section>{% endif %}
+
+<section class="status-row">
+  <article class="card status-card {{ 'good' if shopify_connected else 'warn' }}">
+    <span class="status-label">Shopify</span>
+    <strong>{{ 'Verbunden' if shopify_connected else 'Nicht verbunden' }}</strong>
+    <span class="muted">{{ shopify_shop or 'Shop fehlt' }}</span>
+  </article>
+  <article class="card status-card {{ 'good' if settings.has_cargoboard else 'warn' }}">
+    <span class="status-label">Cargoboard</span>
+    <strong>{{ 'Konfiguriert' if settings.has_cargoboard else 'Fehlt' }}</strong>
+    <span class="muted">API-Key und Zielsystem</span>
+  </article>
+  <article class="card status-card {{ 'good' if settings.has_billing_address else 'warn' }}">
+    <span class="status-label">Rechnungsadresse</span>
+    <strong>{{ 'Konfiguriert' if settings.has_billing_address else 'Fehlt' }}</strong>
+    <span class="muted">Fester Absender für Cargoboard</span>
+  </article>
 </section>
 
-{% if error %}<section class="panel error">{{ error }}</section>{% endif %}
-
-<section class="grid">
-  <div class="panel">
-    <h2>Entwürfe</h2>
-    {% if drafts %}
-      <ul class="list">
-        {% for draft in drafts %}
-          <li><a href="/drafts/{{ draft.id }}">{{ draft.shopify_order_name }} — {{ draft.status }}</a></li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">Noch keine Entwürfe vorhanden.</p>
-    {% endif %}
+<section class="card">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Bestellungen</p>
+      <h2>Aktuelle Shopify-Bestellungen</h2>
+    </div>
   </div>
-  <div class="panel">
-    <h2>Aktuelle Shopify-Bestellungen</h2>
-    {% if orders %}
-      <ul class="list">
-        {% for order in orders %}
-          <li>
-            <a href="/orders/{{ order.id }}">{{ order.name }}</a>
-            — {{ order.customer_name or 'ohne Kundenname' }}
-            — Fulfillment: {{ order.fulfillment_status or 'unbekannt' }}
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">Keine Bestellungen geladen.</p>
-    {% endif %}
-  </div>
+  {% if orders %}
+    <div class="order-grid">
+      {% for order in orders %}
+        <a class="order-card" href="/orders/{{ order.id }}">
+          <div class="order-top">
+            <div>
+              <div class="order-name">{{ order.name }}</div>
+              <div class="muted">{{ order.customer_name or 'ohne Kundenname' }}</div>
+            </div>
+            <span class="status-pill {{ order.fulfillment_status|lower if order.fulfillment_status else 'unknown' }}">
+              {{ order.fulfillment_status or 'unbekannt' }}
+            </span>
+          </div>
+          <div class="order-meta">
+            <span><strong>Payment:</strong> {{ order.financial_status or 'unbekannt' }}</span>
+            <span><strong>ID:</strong> {{ order.id }}</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">Keine Bestellungen geladen.</p>
+  {% endif %}
 </section>
 {% endblock %}

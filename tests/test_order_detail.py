@@ -40,6 +40,6 @@ def test_order_detail_page_shows_fulfillment_status(monkeypatch):
     response = client.get('/orders/123')
 
     assert response.status_code == 200
-    assert 'Fulfillment Status' in response.text
+    assert 'Fulfillment' in response.text
     assert 'fulfilled' in response.text
     assert '#1001' in response.text

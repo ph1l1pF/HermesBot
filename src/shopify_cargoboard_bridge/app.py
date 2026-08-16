@@ -156,6 +156,27 @@ def sync_orders():
     return RedirectResponse(url=f"/?synced={created}", status_code=303)
 
 
+@app.get("/orders/{order_id}", response_class=HTMLResponse)
+def order_detail(request: Request, order_id: str):
+    if not settings.has_shopify_credentials:
+        raise HTTPException(status_code=400, detail="Shopify client credentials missing")
+    client = shopify_client()
+    try:
+        order = client.get_order(order_id)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=exc.response.status_code, detail=f"Shopify konnte nicht geladen werden: {exc.response.text}")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    draft = next((d for d in draft_store.all() if d.shopify_order_id == order_id), None)
+    return templates.TemplateResponse(request, "order.html", {
+        "settings": settings,
+        "order": order,
+        "draft": draft,
+    })
+
+
 @app.get("/drafts/{draft_id}", response_class=HTMLResponse)
 def draft_detail(request: Request, draft_id: str):
     draft = draft_store.get(draft_id)

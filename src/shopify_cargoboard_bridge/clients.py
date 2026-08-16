@@ -40,6 +40,19 @@ class ShopifyClient:
             payload = resp.json().get("orders", [])
         return [self._parse_order(order) for order in payload]
 
+    def get_order(self, order_id: str) -> ShopifyOrderSummary:
+        if not self.ready:
+            raise ValueError("Shopify client is not ready")
+        url = f"{self.base}/orders/{order_id}.json"
+        params = {
+            "fields": "id,name,order_number,created_at,financial_status,fulfillment_status,shipping_address,billing_address,total_weight,line_items,customer,note,tags,cancel_reason,cancelled_at,closed_at,fulfillments",
+        }
+        with httpx.Client(timeout=30.0, headers=self.headers) as client:
+            resp = client.get(url, params=params)
+            resp.raise_for_status()
+            order = resp.json().get("order") or {}
+        return self._parse_order(order)
+
     def _parse_order(self, order: dict[str, Any]) -> ShopifyOrderSummary:
         shipping = order.get("shipping_address") or {}
         customer = order.get("customer") or {}

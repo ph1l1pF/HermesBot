@@ -1,0 +1,35 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a href="/">← Zurück zur Übersicht</a>
+<h1>Bestellung: {{ order.name }}</h1>
+
+<section class="panel">
+  <p><strong>Kunde:</strong> {{ order.customer_name or 'ohne Kundenname' }}</p>
+  <p><strong>Shopify Order ID:</strong> {{ order.id }}</p>
+  <p><strong>Order Number:</strong> {{ order.number }}</p>
+  <p><strong>Erstellt:</strong> {{ order.created_at }}</p>
+  <p><strong>Financial Status:</strong> {{ order.financial_status or 'unbekannt' }}</p>
+  <p><strong>Fulfillment Status:</strong> {{ order.fulfillment_status or 'unbekannt' }}</p>
+  {% if draft %}
+    <p><strong>Entwurf:</strong> <a href="/drafts/{{ draft.id }}">{{ draft.id }}</a></p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Lieferadresse</h2>
+  {% if order.delivery_address %}
+    <p>{{ order.delivery_address.name }}</p>
+    <p>{{ order.delivery_address.street }}</p>
+    <p>{{ order.delivery_address.post_code }} {{ order.delivery_address.city }}</p>
+    <p>{{ order.delivery_address.country_code }}</p>
+  {% else %}
+    <p class="muted">Keine Lieferadresse vorhanden.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Raw Shopify Daten</h2>
+  <pre>{{ order.source | tojson(indent=2) }}</pre>
+</section>
+{% endblock %}

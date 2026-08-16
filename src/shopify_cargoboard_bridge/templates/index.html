@@ -38,7 +38,11 @@
     {% if orders %}
       <ul class="list">
         {% for order in orders %}
-          <li>{{ order.name }} — {{ order.customer_name or 'ohne Kundenname' }}</li>
+          <li>
+            <a href="/orders/{{ order.id }}">{{ order.name }}</a>
+            — {{ order.customer_name or 'ohne Kundenname' }}
+            — Fulfillment: {{ order.fulfillment_status or 'unbekannt' }}
+          </li>
         {% endfor %}
       </ul>
     {% else %}

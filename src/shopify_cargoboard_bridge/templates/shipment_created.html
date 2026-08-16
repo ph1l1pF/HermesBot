@@ -1,0 +1,35 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a class="back-link" href="/orders/{{ order.id }}">← Zurück zur Bestellung</a>
+
+<section class="card hero">
+  <div>
+    <p class="eyebrow">Auftrag erstellt</p>
+    <h1>{{ order.name }}</h1>
+    <p class="muted">Der mockte Speditionsauftrag wurde erzeugt.</p>
+  </div>
+  <span class="status-pill fulfilled">Erstellt</span>
+</section>
+
+<section class="detail-grid">
+  <article class="card info-card">
+    <p class="eyebrow">Auftrag</p>
+    <dl class="meta-list">
+      <div><dt>Order ID</dt><dd>{{ created.id }}</dd></div>
+      <div><dt>Referenz</dt><dd>{{ created.reference }}</dd></div>
+      <div><dt>Status</dt><dd>{{ created.status }}</dd></div>
+    </dl>
+  </article>
+  <article class="card info-card">
+    <p class="eyebrow">Kosten</p>
+    <div class="total-price">{{ '%.2f'|format(created.total) }} {{ created.currency }}</div>
+    <p class="muted">{{ created.service_level }} · Mock-Flow</p>
+  </article>
+</section>
+
+<section class="card">
+  <p class="eyebrow">Nächster Schritt</p>
+  <p>Wenn die echte Cargoboard-API verfügbar ist, können wir diesen Mock-Flow 1:1 auf den realen Auftrag umstellen.</p>
+</section>
+{% endblock %}

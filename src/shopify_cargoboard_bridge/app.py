@@ -83,6 +83,72 @@ def exchange_shopify_code(shop: str, code: str) -> dict:
         return resp.json()
 
 
+def forwarding_defaults(order, draft=None) -> dict:
+    delivery = draft.delivery_address if draft else order.delivery_address
+    package = draft.package if draft else None
+    return {
+        "delivery_name": (delivery.name if delivery else order.customer_name) or "",
+        "delivery_street": (delivery.street if delivery else "") or "",
+        "delivery_post_code": (delivery.post_code if delivery else "") or "",
+        "delivery_city": (delivery.city if delivery else "") or "",
+        "delivery_country_code": (delivery.country_code if delivery else "DE") or "DE",
+        "package_length_cm": package.length_cm if package else 120,
+        "package_width_cm": package.width_cm if package else 80,
+        "package_height_cm": package.height_cm if package else 80,
+        "package_weight_kg": package.weight_kg if package else 25.0,
+        "package_count": package.quantity if package else 1,
+        "package_type": package.package_type if package else "PA",
+        "package_content": package.content if package else (order.name or ""),
+        "service_level": "standard",
+        "pickup_date": order.created_at.date().isoformat(),
+        "insurance_value_eur": 0.0,
+        "liftgate_required": False,
+        "notes": "",
+    }
+
+
+def mock_forwarding_quote(order, payload: dict[str, object]) -> dict[str, object]:
+    count = max(int(payload.get("package_count") or 1), 1)
+    weight = max(float(payload.get("package_weight_kg") or 0.0) * count, 0.0)
+    length = max(float(payload.get("package_length_cm") or 0.0), 0.0)
+    width = max(float(payload.get("package_width_cm") or 0.0), 0.0)
+    height = max(float(payload.get("package_height_cm") or 0.0), 0.0)
+    volume = (length * width * height * count) / 5000.0
+    base = 39.0
+    weight_surcharge = round(weight * 0.38, 2)
+    volume_surcharge = round(volume * 1.65, 2)
+    service_level = str(payload.get("service_level") or "standard")
+    service_surcharge = {"standard": 0.0, "express": 19.0, "priority": 34.0}.get(service_level, 0.0)
+    insurance_surcharge = round(max(float(payload.get("insurance_value_eur") or 0.0), 0.0) * 0.012, 2)
+    liftgate_surcharge = 14.0 if bool(payload.get("liftgate_required")) else 0.0
+    total = round(base + weight_surcharge + volume_surcharge + service_surcharge + insurance_surcharge + liftgate_surcharge, 2)
+    return {
+        "id": f"mock-quote-{order.id}",
+        "currency": "EUR",
+        "base": base,
+        "weight_surcharge": weight_surcharge,
+        "volume_surcharge": volume_surcharge,
+        "service_surcharge": service_surcharge,
+        "insurance_surcharge": insurance_surcharge,
+        "liftgate_surcharge": liftgate_surcharge,
+        "total": total,
+        "valid_until": order.created_at.date().isoformat(),
+        "mode": "mock",
+    }
+
+
+def mock_forwarding_order(order, payload: dict[str, object], quote: dict[str, object]) -> dict[str, object]:
+    return {
+        "id": f"mock-order-{order.id}",
+        "reference": order.name,
+        "status": "created",
+        "currency": quote.get("currency", "EUR"),
+        "total": quote.get("total"),
+        "service_level": payload.get("service_level", "standard"),
+        "mode": "mock",
+    }
+
+
 @app.get("/health")
 def health():
     return {
@@ -175,6 +241,98 @@ def order_detail(request: Request, order_id: str):
         "order": order,
         "draft": draft,
     })
+
+
+@app.get("/orders/{order_id}/shipment", response_class=HTMLResponse)
+def shipment_flow(request: Request, order_id: str):
+    try:
+        order = shopify_client().get_order(order_id)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=exc.response.status_code, detail=f"Shopify konnte nicht geladen werden: {exc.response.text}")
+    draft = next((d for d in draft_store.all() if d.shopify_order_id == order_id), None)
+    form = forwarding_defaults(order, draft)
+    return templates.TemplateResponse(request, "shipment.html", {
+        "settings": settings,
+        "order": order,
+        "draft": draft,
+        "form": form,
+        "quote": None,
+        "created": None,
+    })
+
+
+@app.post("/orders/{order_id}/shipment", response_class=HTMLResponse)
+def shipment_flow_submit(
+    request: Request,
+    order_id: str,
+    action: str = Form("quote"),
+    delivery_name: str = Form(""),
+    delivery_street: str = Form(""),
+    delivery_post_code: str = Form(""),
+    delivery_city: str = Form(""),
+    delivery_country_code: str = Form("DE"),
+    package_length_cm: float = Form(120),
+    package_width_cm: float = Form(80),
+    package_height_cm: float = Form(80),
+    package_weight_kg: float = Form(25.0),
+    package_count: int = Form(1),
+    package_type: str = Form("PA"),
+    package_content: str = Form(""),
+    service_level: str = Form("standard"),
+    pickup_date: str = Form(""),
+    insurance_value_eur: float = Form(0.0),
+    liftgate_required: bool = Form(False),
+    notes: str = Form(""),
+):
+    order = shopify_client().get_order(order_id)
+    draft = next((d for d in draft_store.all() if d.shopify_order_id == order_id), None)
+    form = {
+        "delivery_name": delivery_name,
+        "delivery_street": delivery_street,
+        "delivery_post_code": delivery_post_code,
+        "delivery_city": delivery_city,
+        "delivery_country_code": delivery_country_code,
+        "package_length_cm": package_length_cm,
+        "package_width_cm": package_width_cm,
+        "package_height_cm": package_height_cm,
+        "package_weight_kg": package_weight_kg,
+        "package_count": package_count,
+        "package_type": package_type,
+        "package_content": package_content,
+        "service_level": service_level,
+        "pickup_date": pickup_date,
+        "insurance_value_eur": insurance_value_eur,
+        "liftgate_required": liftgate_required,
+        "notes": notes,
+    }
+    if action == "quote":
+        quote = mock_forwarding_quote(order, form)
+        return templates.TemplateResponse(request, "shipment.html", {
+            "settings": settings,
+            "order": order,
+            "draft": draft,
+            "form": form,
+            "quote": quote,
+            "created": None,
+        })
+    if action == "create":
+        quote = mock_forwarding_quote(order, form)
+        created = mock_forwarding_order(order, form, quote)
+        if draft:
+            draft.order = created
+            draft.status = "ordered"
+            draft_store.upsert(draft)
+        return templates.TemplateResponse(request, "shipment_created.html", {
+            "settings": settings,
+            "order": order,
+            "draft": draft,
+            "form": form,
+            "quote": quote,
+            "created": created,
+        })
+    raise HTTPException(status_code=400, detail="Unknown shipment action")
 
 
 @app.get("/drafts/{draft_id}", response_class=HTMLResponse)

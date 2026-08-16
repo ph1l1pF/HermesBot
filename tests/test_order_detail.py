@@ -43,3 +43,4 @@ def test_order_detail_page_shows_fulfillment_status(monkeypatch):
     assert 'Fulfillment' in response.text
     assert 'fulfilled' in response.text
     assert '#1001' in response.text
+    assert 'Speditionsauftrag erstellen' in response.text

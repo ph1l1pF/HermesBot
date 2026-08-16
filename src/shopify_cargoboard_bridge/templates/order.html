@@ -9,9 +9,12 @@
     <h1>{{ order.name }}</h1>
     <p class="muted">{{ order.customer_name or 'ohne Kundenname' }} · Order #{{ order.number }}</p>
   </div>
-  <span class="status-pill {{ order.fulfillment_status|lower if order.fulfillment_status else 'unknown' }}">
-    {{ order.fulfillment_status or 'unbekannt' }}
-  </span>
+  <div class="hero-actions">
+    <span class="status-pill {{ order.fulfillment_status|lower if order.fulfillment_status else 'unknown' }}">
+      {{ order.fulfillment_status or 'unbekannt' }}
+    </span>
+    <a class="button primary" href="/orders/{{ order.id }}/shipment">Speditionsauftrag erstellen</a>
+  </div>
 </section>
 
 <section class="detail-grid">

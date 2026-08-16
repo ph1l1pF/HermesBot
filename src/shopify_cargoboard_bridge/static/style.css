@@ -58,6 +58,9 @@ input, textarea { font: inherit; padding: 11px 12px; border-radius: 12px; border
 .meta-list dd { margin: 0; font-weight: 700; }
 .address-block { display: flex; flex-direction: column; gap: 4px; }
 .back-link { display: inline-flex; margin-bottom: 8px; color: var(--muted); }
+.checkbox-row { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.total-price { font-size: 1.35rem; font-weight: 800; color: var(--primary-strong); margin-top: 8px; }
+select { font: inherit; padding: 11px 12px; border-radius: 12px; border: 1px solid #cbd5e1; background: rgba(255,255,255,.95); }
 .list { padding-left: 18px; }
 @media (max-width: 900px) {
   .status-row, .order-grid, .detail-grid { grid-template-columns: 1fr; }

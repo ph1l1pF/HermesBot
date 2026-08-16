@@ -1,0 +1,102 @@
+
+{% extends "base.html" %}
+{% block content %}
+<a class="back-link" href="/orders/{{ order.id }}">← Zurück zur Bestellung</a>
+
+<section class="card hero">
+  <div>
+    <p class="eyebrow">Speditionsauftrag</p>
+    <h1>{{ order.name }}</h1>
+    <p class="muted">Mock-Flow für Kostenkalkulation und Auftragserstellung, bis die echte API bereit ist.</p>
+  </div>
+  <span class="status-pill {{ order.fulfillment_status|lower if order.fulfillment_status else 'unknown' }}">
+    {{ order.fulfillment_status or 'unbekannt' }}
+  </span>
+</section>
+
+<section class="detail-grid">
+  <article class="card info-card">
+    <p class="eyebrow">Bestellung</p>
+    <dl class="meta-list">
+      <div><dt>Kunde</dt><dd>{{ order.customer_name or 'ohne Kundenname' }}</dd></div>
+      <div><dt>Financial</dt><dd>{{ order.financial_status or 'unbekannt' }}</dd></div>
+      <div><dt>Fulfillment</dt><dd>{{ order.fulfillment_status or 'unbekannt' }}</dd></div>
+    </dl>
+  </article>
+  <article class="card info-card">
+    <p class="eyebrow">Hinweis</p>
+    <p>Die API ist noch gemockt. Die Kosten werden lokal berechnet und später kann der echte Speditionsauftrag eingesteuert werden.</p>
+  </article>
+</section>
+
+<form method="post" action="/orders/{{ order.id }}/shipment" class="card form-grid">
+  <div class="detail-grid">
+    <article class="card info-card">
+      <p class="eyebrow">Lieferadresse</p>
+      <label>Name <input name="delivery_name" value="{{ form.delivery_name }}"></label>
+      <label>Straße <input name="delivery_street" value="{{ form.delivery_street }}"></label>
+      <label>PLZ <input name="delivery_post_code" value="{{ form.delivery_post_code }}"></label>
+      <label>Stadt <input name="delivery_city" value="{{ form.delivery_city }}"></label>
+      <label>Land <input name="delivery_country_code" value="{{ form.delivery_country_code }}"></label>
+    </article>
+
+    <article class="card info-card">
+      <p class="eyebrow">Paket & Service</p>
+      <label>Anzahl Packstücke <input type="number" min="1" name="package_count" value="{{ form.package_count }}"></label>
+      <label>Länge (cm) <input type="number" min="1" step="1" name="package_length_cm" value="{{ form.package_length_cm }}"></label>
+      <label>Breite (cm) <input type="number" min="1" step="1" name="package_width_cm" value="{{ form.package_width_cm }}"></label>
+      <label>Höhe (cm) <input type="number" min="1" step="1" name="package_height_cm" value="{{ form.package_height_cm }}"></label>
+      <label>Gewicht je Packstück (kg) <input type="number" min="0.1" step="0.1" name="package_weight_kg" value="{{ form.package_weight_kg }}"></label>
+      <label>Packstück-Typ <input name="package_type" value="{{ form.package_type }}"></label>
+      <label>Inhalt <input name="package_content" value="{{ form.package_content }}"></label>
+      <label>Service-Level
+        <select name="service_level">
+          <option value="standard" {% if form.service_level == 'standard' %}selected{% endif %}>Standard</option>
+          <option value="express" {% if form.service_level == 'express' %}selected{% endif %}>Express</option>
+          <option value="priority" {% if form.service_level == 'priority' %}selected{% endif %}>Priority</option>
+        </select>
+      </label>
+      <label>Versicherung in EUR <input type="number" min="0" step="0.01" name="insurance_value_eur" value="{{ form.insurance_value_eur }}"></label>
+      <label>Pickup-Datum <input type="date" name="pickup_date" value="{{ form.pickup_date }}"></label>
+      <label class="checkbox-row"><input type="checkbox" name="liftgate_required" {% if form.liftgate_required %}checked{% endif %}> Hebebühne nötig</label>
+    </article>
+  </div>
+
+  <label>Notizen <textarea name="notes" rows="4">{{ form.notes }}</textarea></label>
+
+  <div class="hero-actions">
+    <button type="submit" name="action" value="quote" class="primary">Kosten berechnen</button>
+    <button type="submit" name="action" value="create" class="secondary" {% if not quote %}disabled{% endif %}>Auftrag erstellen</button>
+  </div>
+</form>
+
+{% if quote %}
+  <section class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Kosten</p>
+        <h2>Berechnete Frachtkosten</h2>
+      </div>
+      <span class="status-pill fulfilled">{{ quote.currency }}</span>
+    </div>
+    <div class="detail-grid">
+      <article class="card info-card">
+        <dl class="meta-list">
+          <div><dt>Basis</dt><dd>{{ '%.2f'|format(quote.base) }} {{ quote.currency }}</dd></div>
+          <div><dt>Gewicht</dt><dd>{{ '%.2f'|format(quote.weight_surcharge) }} {{ quote.currency }}</dd></div>
+          <div><dt>Volumen</dt><dd>{{ '%.2f'|format(quote.volume_surcharge) }} {{ quote.currency }}</dd></div>
+        </dl>
+      </article>
+      <article class="card info-card">
+        <dl class="meta-list">
+          <div><dt>Service</dt><dd>{{ '%.2f'|format(quote.service_surcharge) }} {{ quote.currency }}</dd></div>
+          <div><dt>Versicherung</dt><dd>{{ '%.2f'|format(quote.insurance_surcharge) }} {{ quote.currency }}</dd></div>
+          <div><dt>Hebebühne</dt><dd>{{ '%.2f'|format(quote.liftgate_surcharge) }} {{ quote.currency }}</dd></div>
+        </dl>
+      </article>
+    </div>
+    <div class="total-price">Gesamt: {{ '%.2f'|format(quote.total) }} {{ quote.currency }}</div>
+    <p class="muted">Mock-Kalkulation, gültig bis {{ quote.valid_until }}.</p>
+  </section>
+{% endif %}
+{% endblock %}

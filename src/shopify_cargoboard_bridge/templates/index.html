@@ -8,6 +8,7 @@
     <p class="muted">Shopify-Bestellungen prüfen, Fulfillment-Status im Blick behalten und danach erst Cargoboard beauftragen.</p>
   </div>
   <div class="hero-actions">
+    <a class="button" href="/pickup-addresses">Abholadressen</a>
     {% if shopify_connect_url and not shopify_connected %}
       <a class="button primary" href="{{ shopify_connect_url }}">Shopify verbinden</a>
     {% endif %}

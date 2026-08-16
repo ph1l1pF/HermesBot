@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import os
@@ -64,6 +63,7 @@ class Settings:
     shopify_scopes: str = env("SHOPIFY_SCOPES", default="read_orders")
     shopify_access_mode: str = env("SHOPIFY_ACCESS_MODE", default="offline")
     shopify_auth_path: Path = Path(env("SHOPIFY_AUTH_PATH", default=str(Path.home() / ".hermes" / "shopify_auth.json")))
+    pickup_addresses_path: Path = Path(env("PICKUP_ADDRESSES_PATH", default=str(Path.home() / ".hermes" / "pickup_addresses.json")))
     cargoboard_api_key: str = env("CARGOBOARD_API_KEY")
     cargoboard_base_url: str = env("CARGOBOARD_BASE_URL", default="https://api-sandbox.cargoboard.com")
     billing_name: str = env("BILLING_NAME")

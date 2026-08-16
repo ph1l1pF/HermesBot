@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-link" href="/">← Zurück zur Übersicht</a>
+
+<section class="card hero">
+  <div>
+    <p class="eyebrow">Abholadressen</p>
+    <h1>Gespeicherte Abholadressen</h1>
+    <p class="muted">Hier verwaltest du die Adressen, die du später im Speditionsauftrag auswählen kannst.</p>
+  </div>
+  <a class="button primary" href="/">Zur Startseite</a>
+</section>
+
+<section class="detail-grid">
+  <form method="post" action="/pickup-addresses" class="card form-stack">
+    <p class="eyebrow">Neue Abholadresse</p>
+    <label>Bezeichnung <input name="label" placeholder="z.B. Lager Pafos"></label>
+    <label>Name / Firma <input name="name" placeholder="Firmenname oder Ansprechpartner"></label>
+    <label>Straße <input name="street" placeholder="Straße und Hausnummer"></label>
+    <label>PLZ <input name="post_code" placeholder="Postleitzahl"></label>
+    <label>Ort <input name="city" placeholder="Stadt"></label>
+    <label>Land <input name="country_code" value="DE"></label>
+    <button type="submit" class="primary">Adresse speichern</button>
+  </form>
+
+  <section class="card">
+    <p class="eyebrow">Hinweis</p>
+    <p>Die gespeicherten Abholadressen werden dauerhaft in einer lokalen JSON-Datei abgelegt und stehen im Speditionsformular zur Auswahl bereit.</p>
+  </section>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Gespeichert</p>
+      <h2>Abholadressen</h2>
+    </div>
+  </div>
+
+  {% if addresses %}
+    <div class="address-grid">
+      {% for address in addresses %}
+        <article class="card address-card">
+          <div>
+            <div class="order-name">{{ address.label or address.name or 'Abholadresse' }}</div>
+            <div class="muted">{{ address.name or '—' }}</div>
+          </div>
+          <div class="address-block">
+            <span>{{ address.street }}</span>
+            <span>{{ address.post_code }} {{ address.city }}</span>
+            <span>{{ address.country_code }}</span>
+          </div>
+          <form method="post" action="/pickup-addresses/{{ address.id }}/delete">
+            <button type="submit" class="secondary">Löschen</button>
+          </form>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">Noch keine Abholadressen gespeichert.</p>
+  {% endif %}
+</section>
+{% endblock %}

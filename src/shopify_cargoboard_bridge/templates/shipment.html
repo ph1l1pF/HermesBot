@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 {% block content %}
 <a class="back-link" href="/orders/{{ order.id }}">← Zurück zur Bestellung</a>
@@ -29,7 +28,34 @@
   </article>
 </section>
 
-<form method="post" action="/orders/{{ order.id }}/shipment" class="card form-grid">
+<form method="post" action="/orders/{{ order.id }}/shipment" class="form-stack">
+  <section class="card info-card">
+    <p class="eyebrow">Abholadresse</p>
+    {% if pickup_addresses %}
+      <label>Gespeicherte Abholadresse
+        <select name="pickup_address_id">
+          {% for pickup in pickup_addresses %}
+            <option value="{{ pickup.id }}" {% if pickup.id == selected_pickup_address_id %}selected{% endif %}>
+              {{ pickup.label or pickup.name or 'Abholadresse' }} — {{ pickup.street }} — {{ pickup.post_code }} {{ pickup.city }}
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if selected_pickup_address %}
+        <div class="address-preview">
+          <strong>{{ selected_pickup_address.label or selected_pickup_address.name or 'Abholadresse' }}</strong>
+          <span>{{ selected_pickup_address.name }}</span>
+          <span>{{ selected_pickup_address.street }}</span>
+          <span>{{ selected_pickup_address.post_code }} {{ selected_pickup_address.city }}</span>
+          <span>{{ selected_pickup_address.country_code }}</span>
+        </div>
+      {% endif %}
+      <p class="muted">Weitere Abholadressen kannst du hier verwalten: <a href="/pickup-addresses">Abholadressen</a></p>
+    {% else %}
+      <p class="muted">Noch keine Abholadressen gespeichert. <a href="/pickup-addresses">Jetzt anlegen</a>.</p>
+    {% endif %}
+  </section>
+
   <div class="detail-grid">
     <article class="card info-card">
       <p class="eyebrow">Lieferadresse</p>
@@ -73,7 +99,7 @@
 
   <div class="hero-actions">
     <button type="submit" name="action" value="quote" class="primary">Kosten berechnen</button>
-    <button type="submit" name="action" value="create" class="secondary" {% if not quote %}disabled{% endif %}>Auftrag erstellen</button>
+    <button type="submit" name="action" value="create" class="secondary">Auftrag erstellen</button>
   </div>
 </form>
 

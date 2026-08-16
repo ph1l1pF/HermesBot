@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import json
@@ -6,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from .models import Address, PackageInput, ShippingDraft
+from .models import Address, PackageInput, PickupAddress, ShippingDraft
 
 
 class DraftStore:
@@ -54,6 +53,48 @@ class DraftStore:
 
     def delete(self, draft_id: str) -> None:
         self.save([d for d in self.load() if d.id != draft_id])
+
+    def new_id(self) -> str:
+        return uuid4().hex[:12]
+
+
+class PickupAddressStore:
+    def __init__(self, path: Path):
+        self.path = path
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def load(self) -> list[PickupAddress]:
+        if not self.path.exists():
+            return []
+        raw = json.loads(self.path.read_text())
+        return [PickupAddress(**item) for item in raw]
+
+    def save(self, addresses: list[PickupAddress]) -> None:
+        payload = [address.model_dump(mode="json") for address in addresses]
+        self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+
+    def all(self) -> list[PickupAddress]:
+        return self.load()
+
+    def get(self, address_id: str) -> PickupAddress | None:
+        for address in self.load():
+            if address.id == address_id:
+                return address
+        return None
+
+    def upsert(self, address: PickupAddress) -> PickupAddress:
+        addresses = self.load()
+        for idx, existing in enumerate(addresses):
+            if existing.id == address.id:
+                addresses[idx] = address
+                self.save(addresses)
+                return address
+        addresses.append(address)
+        self.save(addresses)
+        return address
+
+    def delete(self, address_id: str) -> None:
+        self.save([address for address in self.load() if address.id != address_id])
 
     def new_id(self) -> str:
         return uuid4().hex[:12]

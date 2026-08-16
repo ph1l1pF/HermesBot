@@ -15,12 +15,13 @@ from .auth import ShopifyAuthStore
 from .clients import CargoboardClient, ShopifyClient
 from .config import Settings, normalize_shop_domain
 from .mappers import order_to_draft
-from .models import Address, PackageInput
-from .store import DraftStore
+from .models import Address, PackageInput, PickupAddress
+from .store import DraftStore, PickupAddressStore
 
 
 settings = Settings()
 draft_store = DraftStore(settings.state_path)
+pickup_address_store = PickupAddressStore(settings.pickup_addresses_path)
 auth_store = ShopifyAuthStore(settings.shopify_auth_path)
 app = FastAPI(title=settings.app_title)
 templates = Jinja2Templates(directory=str(Path(__file__).with_name("templates")))
@@ -44,6 +45,26 @@ def shopify_client() -> ShopifyClient:
 
 def cargoboard_client() -> CargoboardClient:
     return CargoboardClient(settings)
+
+
+def pickup_addresses() -> list[PickupAddress]:
+    return pickup_address_store.all()
+
+
+def get_pickup_address(address_id: str) -> PickupAddress | None:
+    if not address_id:
+        return None
+    return pickup_address_store.get(address_id)
+
+
+def default_pickup_address() -> PickupAddress | None:
+    addresses = pickup_addresses()
+    return addresses[0] if addresses else None
+
+
+def pickup_address_option_label(address: PickupAddress) -> str:
+    parts = [address.label or address.name or "Abholadresse", address.street, f"{address.post_code} {address.city}".strip()]
+    return " · ".join([part for part in parts if part])
 
 
 def shopify_callback_url(request: Request) -> str:
@@ -183,6 +204,42 @@ def index(request: Request):
     })
 
 
+@app.get("/pickup-addresses", response_class=HTMLResponse)
+def pickup_addresses_page(request: Request):
+    return templates.TemplateResponse(request, "pickup_addresses.html", {
+        "settings": settings,
+        "addresses": pickup_addresses(),
+    })
+
+
+@app.post("/pickup-addresses")
+def create_pickup_address(
+    label: str = Form(""),
+    name: str = Form(""),
+    street: str = Form(""),
+    city: str = Form(""),
+    post_code: str = Form(""),
+    country_code: str = Form("DE"),
+):
+    address = PickupAddress(
+        id=pickup_address_store.new_id(),
+        label=label.strip() or name.strip() or "Abholadresse",
+        name=name.strip(),
+        street=street.strip(),
+        city=city.strip(),
+        post_code=post_code.strip(),
+        country_code=country_code.strip() or "DE",
+    )
+    pickup_address_store.upsert(address)
+    return RedirectResponse(url="/pickup-addresses", status_code=303)
+
+
+@app.post("/pickup-addresses/{address_id}/delete")
+def delete_pickup_address(address_id: str):
+    pickup_address_store.delete(address_id)
+    return RedirectResponse(url="/pickup-addresses", status_code=303)
+
+
 @app.get("/shopify/connect")
 def shopify_connect(request: Request):
     auth_url = build_shopify_auth_url(request)
@@ -244,7 +301,7 @@ def order_detail(request: Request, order_id: str):
 
 
 @app.get("/orders/{order_id}/shipment", response_class=HTMLResponse)
-def shipment_flow(request: Request, order_id: str):
+def shipment_flow(request: Request, order_id: str, pickup_address_id: str = ""):
     try:
         order = shopify_client().get_order(order_id)
     except httpx.HTTPStatusError as exc:
@@ -252,6 +309,7 @@ def shipment_flow(request: Request, order_id: str):
             raise HTTPException(status_code=404, detail="Order not found")
         raise HTTPException(status_code=exc.response.status_code, detail=f"Shopify konnte nicht geladen werden: {exc.response.text}")
     draft = next((d for d in draft_store.all() if d.shopify_order_id == order_id), None)
+    selected_pickup_address = get_pickup_address(pickup_address_id) or default_pickup_address()
     form = forwarding_defaults(order, draft)
     return templates.TemplateResponse(request, "shipment.html", {
         "settings": settings,
@@ -260,6 +318,9 @@ def shipment_flow(request: Request, order_id: str):
         "form": form,
         "quote": None,
         "created": None,
+        "pickup_addresses": pickup_addresses(),
+        "selected_pickup_address": selected_pickup_address,
+        "selected_pickup_address_id": selected_pickup_address.id if selected_pickup_address else "",
     })
 
 
@@ -268,6 +329,7 @@ def shipment_flow_submit(
     request: Request,
     order_id: str,
     action: str = Form("quote"),
+    pickup_address_id: str = Form(""),
     delivery_name: str = Form(""),
     delivery_street: str = Form(""),
     delivery_post_code: str = Form(""),
@@ -288,7 +350,11 @@ def shipment_flow_submit(
 ):
     order = shopify_client().get_order(order_id)
     draft = next((d for d in draft_store.all() if d.shopify_order_id == order_id), None)
+    selected_pickup_address = get_pickup_address(pickup_address_id) or default_pickup_address()
+    if not selected_pickup_address:
+        raise HTTPException(status_code=400, detail="Es ist noch keine Abholadresse gespeichert.")
     form = {
+        "pickup_address_id": selected_pickup_address.id,
         "delivery_name": delivery_name,
         "delivery_street": delivery_street,
         "delivery_post_code": delivery_post_code,
@@ -316,6 +382,9 @@ def shipment_flow_submit(
             "form": form,
             "quote": quote,
             "created": None,
+            "pickup_addresses": pickup_addresses(),
+            "selected_pickup_address": selected_pickup_address,
+            "selected_pickup_address_id": selected_pickup_address.id if selected_pickup_address else "",
         })
     if action == "create":
         quote = mock_forwarding_quote(order, form)
@@ -331,6 +400,7 @@ def shipment_flow_submit(
             "form": form,
             "quote": quote,
             "created": created,
+            "selected_pickup_address": selected_pickup_address,
         })
     raise HTTPException(status_code=400, detail="Unknown shipment action")
 

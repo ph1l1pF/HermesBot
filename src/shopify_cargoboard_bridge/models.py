@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,6 +7,16 @@ from pydantic import BaseModel, Field
 
 
 class Address(BaseModel):
+    name: str = ""
+    street: str = ""
+    city: str = ""
+    post_code: str = ""
+    country_code: str = "DE"
+
+
+class PickupAddress(BaseModel):
+    id: str
+    label: str = ""
     name: str = ""
     street: str = ""
     city: str = ""

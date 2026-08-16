@@ -3,12 +3,39 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+
+
+def _read_hermes_config() -> dict[str, str]:
+    path = Path.home() / ".hermes" / "config.yaml"
+    if not path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or ":" not in stripped:
+            continue
+        if line.startswith(" ") or line.startswith("\t"):
+            continue
+        key, value = stripped.split(":", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+@lru_cache(maxsize=1)
+def _hermes_config() -> dict[str, str]:
+    return _read_hermes_config()
 
 
 def env(*names: str, default: str = "") -> str:
     for name in names:
         value = os.environ.get(name)
+        if value is not None and value.strip():
+            return value.strip()
+    config = _hermes_config()
+    for name in names:
+        value = config.get(name)
         if value is not None and value.strip():
             return value.strip()
     return default

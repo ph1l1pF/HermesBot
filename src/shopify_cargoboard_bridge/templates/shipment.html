@@ -47,7 +47,14 @@
       <label>Breite (cm) <input type="number" min="1" step="1" name="package_width_cm" value="{{ form.package_width_cm }}"></label>
       <label>Höhe (cm) <input type="number" min="1" step="1" name="package_height_cm" value="{{ form.package_height_cm }}"></label>
       <label>Gewicht je Packstück (kg) <input type="number" min="0.1" step="0.1" name="package_weight_kg" value="{{ form.package_weight_kg }}"></label>
-      <label>Packstück-Typ <input name="package_type" value="{{ form.package_type }}"></label>
+      <label>Packstück-Typ
+        <select name="package_type">
+          <option value="PA" {% if form.package_type == 'PA' %}selected{% endif %}>Paket</option>
+          <option value="PL" {% if form.package_type == 'PL' %}selected{% endif %}>Palette</option>
+          <option value="DO" {% if form.package_type == 'DO' %}selected{% endif %}>Dokument</option>
+          <option value="BO" {% if form.package_type == 'BO' %}selected{% endif %}>Box</option>
+        </select>
+      </label>
       <label>Inhalt <input name="package_content" value="{{ form.package_content }}"></label>
       <label>Service-Level
         <select name="service_level">

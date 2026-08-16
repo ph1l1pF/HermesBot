@@ -22,7 +22,14 @@
   <label>Breite (cm) <input type="number" name="package_width_cm" value="{{ draft.package.width_cm }}"></label>
   <label>Höhe (cm) <input type="number" name="package_height_cm" value="{{ draft.package.height_cm }}"></label>
   <label>Gewicht (kg) <input step="0.1" type="number" name="package_weight_kg" value="{{ draft.package.weight_kg }}"></label>
-  <label>Packstück-Typ <input name="package_type" value="{{ draft.package.package_type }}"></label>
+  <label>Packstück-Typ
+    <select name="package_type">
+      <option value="PA" {% if draft.package.package_type == 'PA' %}selected{% endif %}>Paket</option>
+      <option value="PL" {% if draft.package.package_type == 'PL' %}selected{% endif %}>Palette</option>
+      <option value="DO" {% if draft.package.package_type == 'DO' %}selected{% endif %}>Dokument</option>
+      <option value="BO" {% if draft.package.package_type == 'BO' %}selected{% endif %}>Box</option>
+    </select>
+  </label>
   <label>Inhalt <input name="package_content" value="{{ draft.package.content }}"></label>
   <label>Notizen <textarea name="notes">{{ draft.notes }}</textarea></label>
   <button type="submit">Speichern</button>

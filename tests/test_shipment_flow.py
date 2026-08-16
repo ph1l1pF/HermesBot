@@ -73,6 +73,7 @@ def test_shipment_flow_page_shows_calculation_form(monkeypatch):
     assert 'Speditionsauftrag' in response.text
     assert 'Kosten berechnen' in response.text
     assert 'Paket & Service' in response.text
+    assert 'Paket' in response.text
 
 
 def test_shipment_flow_quote_and_create(monkeypatch):

@@ -28,4 +28,6 @@ def test_order_to_draft_uses_billing_as_pickup_and_delivery_is_editable():
     assert draft.pickup_address.street == "Invoice St 1"
     assert draft.delivery_address.city == "Hamburg"
     assert draft.package.quantity == 1
-    assert draft.package.package_type == "PA"
+    assert draft.package.package_type == "KT"
+    assert draft.package.weight_kg == 10
+    assert draft.package.height_cm == 10

@@ -6,7 +6,7 @@
   <div>
     <p class="eyebrow">Auftrag erstellt</p>
     <h1>{{ order.name }}</h1>
-    <p class="muted">Der mockte Speditionsauftrag wurde erzeugt.</p>
+    <p class="muted">Der Speditionsauftrag wurde bei Cargoboard gebucht.</p>
   </div>
   <span class="status-pill fulfilled">Erstellt</span>
 </section>
@@ -17,13 +17,13 @@
     <dl class="meta-list">
       <div><dt>Order ID</dt><dd>{{ created.id }}</dd></div>
       <div><dt>Referenz</dt><dd>{{ created.reference }}</dd></div>
-      <div><dt>Status</dt><dd>{{ created.status }}</dd></div>
+      <div><dt>Status</dt><dd>{{ created.status or 'Gebucht' }}</dd></div>
     </dl>
   </article>
   <article class="card info-card">
     <p class="eyebrow">Kosten</p>
-    <div class="total-price">{{ '%.2f'|format(created.total) }} {{ created.currency }}</div>
-    <p class="muted">{{ created.service_level }} · Mock-Flow</p>
+    <div class="total-price">{{ '%.2f'|format(created.price.amount) }} {{ created.price.currency }} netto</div>
+    <p class="muted">{{ created.product }} · {{ settings.cargoboard_environment }}</p>
   </article>
 </section>
 
@@ -36,12 +36,13 @@
       <span>{{ selected_pickup_address.street }}</span>
       <span>{{ selected_pickup_address.post_code }} {{ selected_pickup_address.city }}</span>
       <span>{{ selected_pickup_address.country_code }}</span>
+      {% if selected_pickup_address.phone %}<span>Telefon: {{ selected_pickup_address.phone }}</span>{% endif %}
     </div>
   </section>
 {% endif %}
 
 <section class="card">
   <p class="eyebrow">Nächster Schritt</p>
-  <p>Wenn die echte Cargoboard-API verfügbar ist, können wir diesen Mock-Flow 1:1 auf den realen Auftrag umstellen.</p>
+  <p>Die Sendung ist jetzt im Cargoboard-Portal verfügbar. Dort findest du auch Versanddokumente und den Sendungsstatus.</p>
 </section>
 {% endblock %}

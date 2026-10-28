@@ -27,14 +27,10 @@
     <span class="muted">{{ shopify_shop or 'Shop fehlt' }}</span>
   </article>
   <article class="card status-card {{ 'good' if settings.has_cargoboard else 'warn' }}">
-    <span class="status-label">Cargoboard</span>
+    <span class="status-label">Cargoboard · {{ settings.cargoboard_environment }}</span>
     <strong>{{ 'Konfiguriert' if settings.has_cargoboard else 'Fehlt' }}</strong>
     <span class="muted">API-Key und Zielsystem</span>
-  </article>
-  <article class="card status-card {{ 'good' if settings.has_billing_address else 'warn' }}">
-    <span class="status-label">Rechnungsadresse</span>
-    <strong>{{ 'Konfiguriert' if settings.has_billing_address else 'Fehlt' }}</strong>
-    <span class="muted">Fester Absender für Cargoboard</span>
+    <form method="post" action="/cargoboard/check"><button type="submit" {% if not settings.has_cargoboard %}disabled{% endif %}>Verbindung prüfen</button></form>
   </article>
 </section>
 

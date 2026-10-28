@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+from shopify_cargoboard_bridge.shipping import next_pickup_date
+
 from fastapi.testclient import TestClient
 
 import shopify_cargoboard_bridge.app as appmod
@@ -17,6 +19,7 @@ class DraftStoreStub:
 
     def upsert(self, draft):
         self.saved.append(draft)
+        self._drafts = [d for d in self._drafts if d.id != draft.id] + [draft]
         return draft
 
 
@@ -89,7 +92,9 @@ def setup_app(monkeypatch, draft_store=None, pickup_store=None):
         shopify_client_secret='secret',
         shopify_scopes='read_orders',
         shopify_access_mode='offline',
-        has_cargoboard=False,
+        has_cargoboard=True,
+        cargoboard_environment="Sandbox",
+        cargoboard_base_url="https://api-sandbox.cargoboard.com",
         has_billing_address=False,
     )
     monkeypatch.setattr(appmod, 'settings', fake_settings)
@@ -122,6 +127,14 @@ def test_shipment_flow_quote_and_create(monkeypatch):
     ])
     store = DraftStoreStub([make_draft()])
     setup_app(monkeypatch, store, pickup_store)
+    calls = []
+    def quote(payload):
+        calls.append(('quote', payload))
+        return {'id': 'quote-123', 'product': 'EXPRESS', 'price': {'amount': 100, 'grossAmount': 119, 'currency': 'EUR'}, 'costItems': [], 'pickupOn': payload['shipper']['pickupOn']}
+    def book(payload, quotation):
+        calls.append(('book', payload))
+        return {'id': 'order-123', 'reference': 'CB-123', 'product': 'EXPRESS', 'price': {'amount': 100, 'currency': 'EUR'}}
+    monkeypatch.setattr(appmod, 'cargoboard_client', lambda: SimpleNamespace(place_quotation=quote, place_order=book))
     client = TestClient(appmod.app)
     payload = {
         'action': 'quote',
@@ -139,7 +152,7 @@ def test_shipment_flow_quote_and_create(monkeypatch):
         'package_type': 'PA',
         'package_content': 'Test',
         'service_level': 'express',
-        'pickup_date': '2026-01-01',
+        'pickup_date': next_pickup_date(),
         'insurance_value_eur': '1000',
         'liftgate_required': 'on',
         'notes': 'Handle with care',
@@ -153,14 +166,20 @@ def test_shipment_flow_quote_and_create(monkeypatch):
 
     create_payload = dict(payload)
     create_payload['action'] = 'create'
+    create_payload['quotation_token'] = store.saved[-1].quotation_token
     create_response = client.post('/orders/123/shipment', data=create_payload)
     assert create_response.status_code == 200
     assert 'Auftrag erstellt' in create_response.text
-    assert 'mock-order-123' in create_response.text
+    assert 'order-123' in create_response.text
     assert 'Verwendete Abholadresse' in create_response.text
     assert store.saved
     assert store.saved[-1].status == 'ordered'
-    assert store.saved[-1].order['status'] == 'created'
+    assert store.saved[-1].order['id'] == 'order-123'
+    assert calls[0][1]['shipper']['name'] == 'Lager GmbH'
+    assert calls[0][1]['product'] == 'EXPRESS'
+    assert calls[0][1]['consignee']['wantsTailLiftTruck'] is True
+    assert client.post('/orders/123/shipment', data=create_payload).status_code == 409
+    assert len([call for call in calls if call[0] == 'book']) == 1
 
 
 def test_pickup_address_page_creates_and_lists_addresses(monkeypatch):

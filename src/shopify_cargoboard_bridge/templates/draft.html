@@ -24,7 +24,7 @@
   <label>Gewicht (kg) <input step="0.1" type="number" name="package_weight_kg" value="{{ draft.package.weight_kg }}"></label>
   <label>Packstück-Typ
     <select name="package_type">
-      <option value="PA" {% if draft.package.package_type == 'PA' %}selected{% endif %}>Paket</option>
+      <option value="PA" {% if draft.package.package_type == 'PA' %}selected{% endif %}>Sonstiges Packstück</option>
       <option value="PL" {% if draft.package.package_type == 'PL' %}selected{% endif %}>Palette</option>
       <option value="DO" {% if draft.package.package_type == 'DO' %}selected{% endif %}>Dokument</option>
       <option value="BO" {% if draft.package.package_type == 'BO' %}selected{% endif %}>Box</option>
@@ -36,8 +36,7 @@
 </form>
 
 <section class="panel">
-  <form method="post" action="/drafts/{{ draft.id }}/quote" style="display:inline"><button type="submit">Quotation erzeugen</button></form>
-  <form method="post" action="/drafts/{{ draft.id }}/confirm" style="display:inline"><button type="submit">Auftrag an Cargoboard senden</button></form>
+  <a href="/orders/{{ draft.shopify_order_id }}/shipment">Versanddaten prüfen und Kosten berechnen</a>
   <form method="post" action="/drafts/{{ draft.id }}/delete" style="display:inline"><button type="submit" class="secondary">Entwurf löschen</button></form>
 </section>
 

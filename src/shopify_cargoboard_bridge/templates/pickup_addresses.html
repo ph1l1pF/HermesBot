@@ -20,12 +20,13 @@
     <label>PLZ <input name="post_code" placeholder="Postleitzahl"></label>
     <label>Ort <input name="city" placeholder="Stadt"></label>
     <label>Land <input name="country_code" value="DE"></label>
+    <label>Telefon für die Abholung <input type="tel" name="phone" placeholder="z.B. +49 661 123456"></label>
     <button type="submit" class="primary">Adresse speichern</button>
   </form>
 
   <section class="card">
     <p class="eyebrow">Hinweis</p>
-    <p>Die gespeicherten Abholadressen werden dauerhaft in einer lokalen JSON-Datei abgelegt und stehen im Speditionsformular zur Auswahl bereit.</p>
+    <p>Die gespeicherten Abholadressen stehen im Speditionsformular zur Auswahl bereit. Eine hinterlegte Telefonnummer wird als Abholkontakt an Cargoboard übermittelt.</p>
   </section>
 </section>
 
@@ -50,6 +51,19 @@
             <span>{{ address.post_code }} {{ address.city }}</span>
             <span>{{ address.country_code }}</span>
           </div>
+          <details>
+            <summary>Adresse bearbeiten</summary>
+            <form method="post" action="/pickup-addresses/{{ address.id }}/edit" class="form-stack">
+              <label>Bezeichnung <input name="label" value="{{ address.label }}" placeholder="z.B. Lager Pafos"></label>
+              <label>Name / Firma <input name="name" value="{{ address.name }}"></label>
+              <label>Straße <input name="street" value="{{ address.street }}"></label>
+              <label>PLZ <input name="post_code" value="{{ address.post_code }}"></label>
+              <label>Ort <input name="city" value="{{ address.city }}"></label>
+              <label>Land <input name="country_code" value="{{ address.country_code }}" maxlength="2"></label>
+              <label>Telefon für die Abholung <input type="tel" name="phone" value="{{ address.phone }}" placeholder="z.B. +49 661 123456"></label>
+              <button type="submit" class="secondary">Änderungen speichern</button>
+            </form>
+          </details>
           <form method="post" action="/pickup-addresses/{{ address.id }}/delete">
             <button type="submit" class="secondary">Löschen</button>
           </form>

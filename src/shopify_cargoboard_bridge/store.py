@@ -29,7 +29,17 @@ class DraftStore:
 
     def save(self, drafts: list[ShippingDraft]) -> None:
         payload = [d.model_dump(mode="json") for d in drafts]
-        self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+        import os
+        import tempfile
+        fd, name = tempfile.mkstemp(dir=self.path.parent, prefix=f".{self.path.name}.")
+        try:
+            with os.fdopen(fd, "w") as stream:
+                stream.write(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+                stream.flush()
+                os.fsync(stream.fileno())
+            Path(name).replace(self.path)
+        finally:
+            Path(name).unlink(missing_ok=True)
 
     def upsert(self, draft: ShippingDraft) -> ShippingDraft:
         drafts = self.load()
@@ -56,7 +66,6 @@ class DraftStore:
 
     def new_id(self) -> str:
         return uuid4().hex[:12]
-
 
 class PickupAddressStore:
     def __init__(self, path: Path):

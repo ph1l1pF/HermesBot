@@ -26,7 +26,7 @@ def order_to_draft(order: ShopifyOrderSummary, settings: Settings, draft_id: str
         pickup_address=billing,
         delivery_address=delivery,
         billing_address=billing,
-        package=PackageInput(quantity=1, package_type="PA", content=order.name),
+        package=PackageInput(quantity=1, length_cm=120, width_cm=80, content=order.name),
         notes="",
         status="draft",
     )

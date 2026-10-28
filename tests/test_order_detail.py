@@ -18,6 +18,8 @@ def test_order_detail_page_shows_fulfillment_status(monkeypatch):
         shopify_scopes='read_orders',
         shopify_access_mode='offline',
         has_cargoboard=False,
+        cargoboard_environment="Sandbox",
+        cargoboard_base_url="https://api-sandbox.cargoboard.com",
         has_billing_address=False,
     )
     fake_order = ShopifyOrderSummary(

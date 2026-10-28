@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+  <p class="eyebrow">Sicherheitsabfrage · Produktion</p>
+  <h1>Kostenpflichtigen Transport verbindlich buchen?</h1>
+  <p>Mit deiner Bestätigung wird ein echter Transportauftrag bei Cargoboard erstellt und berechnet. Bitte alle Angaben prüfen.</p>
+  <div class="detail-grid">
+    <article><h2>Abholung</h2>
+      <p>{{ draft.pickup_address.name }}<br>{{ draft.pickup_address.street }}<br>{{ draft.pickup_address.post_code }} {{ draft.pickup_address.city }}<br>{{ draft.pickup_address.country_code }}</p>
+      {% if draft.pickup_address.phone %}<p>Telefon: {{ draft.pickup_address.phone }}</p>{% endif %}
+      <p>Abholdatum: {{ form.pickup_date }}</p>
+    </article>
+    <article><h2>Lieferung</h2>
+      <p>{{ draft.delivery_address.name }}<br>{{ draft.delivery_address.street }}<br>{{ draft.delivery_address.post_code }} {{ draft.delivery_address.city }}<br>{{ draft.delivery_address.country_code }}</p>
+      {% if form.delivery_phone %}<p>Telefon: {{ form.delivery_phone }}</p>{% endif %}
+      {% if form.delivery_email %}<p>E-Mail: {{ form.delivery_email }}</p>{% endif %}
+    </article>
+  </div>
+  <p>Shopify-Bestellung: {{ order.name }} · Produkt: {{ draft.quotation.product }}</p>
+  <p>{{ draft.package.quantity }} Packstück(e), je {{ draft.package.length_cm }} × {{ draft.package.width_cm }} × {{ draft.package.height_cm }} cm · {{ draft.package.weight_kg }} kg je Packstück · {{ 'Karton' if draft.package.package_type == 'KT' else draft.package.package_type }}</p>
+  <p>Inhalt: {{ draft.package.content }}</p>
+  {% if form.notes %}<p>Notizen: {{ form.notes }}</p>{% endif %}
+  <dl class="meta-list">{% for item in draft.quotation.costItems or [] %}
+    <div><dt>{{ item.description }}</dt><dd>{{ '%.2f'|format(item.price.amount) }} {{ item.price.currency }} netto</dd></div>
+  {% endfor %}</dl>
+  <div class="total-price">Gesamt: {{ '%.2f'|format(draft.quotation.price.amount) }} {{ draft.quotation.price.currency }} netto</div>
+  {% if draft.quotation.price.grossAmount is number and draft.quotation.price.vatAmount is number and draft.quotation.price.vatAmount > 0 %}<p>{{ '%.2f'|format(draft.quotation.price.grossAmount) }} {{ draft.quotation.price.currency }} inkl. MwSt.</p>{% endif %}
+  <label class="checkbox-row"><input type="checkbox" name="show_payload" value="true" form="booking-confirm-form" {% if show_payload %}checked{% endif %} data-payload-toggle> JSON-Anfrage an Cargoboard als Text anzeigen</label>
+  {% if payload_json %}
+  <section class="card" data-payload-output {% if not show_payload %}hidden{% endif %}>
+    <h2>JSON-Anfrage an Cargoboard</h2>
+    <pre><code>{{ payload_json }}</code></pre>
+  </section>
+  {% endif %}
+  <form id="booking-confirm-form" method="post" action="/orders/{{ order.id }}/shipment" class="hero-actions">
+    {% for key, value in form.items() %}
+      {% if value is sameas true %}<input type="hidden" name="{{ key }}" value="on">
+      {% elif value is not sameas false %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endif %}
+    {% endfor %}
+    <input type="hidden" name="quotation_token" value="{{ draft.quotation_token }}">
+    <input type="hidden" name="production_confirmation_token" value="{{ draft.production_confirmation_token }}">
+    <button type="submit" name="action" value="confirm" class="primary">Ja, kostenpflichtig buchen</button>
+    <a class="button secondary" href="/orders/{{ order.id }}/shipment">Abbrechen</a>
+  </form>
+</section>
+<script>
+  document.querySelectorAll('[data-payload-toggle]').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+      const output = document.querySelector('[data-payload-output]');
+      if (output) output.hidden = !checkbox.checked;
+    });
+  });
+</script>
+{% endblock %}

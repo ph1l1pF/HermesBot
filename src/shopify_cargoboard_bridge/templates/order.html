@@ -36,6 +36,7 @@
         <span>{{ order.delivery_address.street }}</span>
         <span>{{ order.delivery_address.post_code }} {{ order.delivery_address.city }}</span>
         <span>{{ order.delivery_address.country_code }}</span>
+        {% if order.delivery_address.phone %}<span>Telefon: {{ order.delivery_address.phone }}</span>{% endif %}
       </div>
     {% else %}
       <p class="muted">Keine Lieferadresse vorhanden.</p>

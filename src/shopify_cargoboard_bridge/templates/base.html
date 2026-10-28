@@ -5,9 +5,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ settings.app_title }}</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    (() => {
+      let theme;
+      try { theme = localStorage.getItem('hermesbot-theme'); } catch (_) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
-  <main class="container">{% block content %}{% endblock %}</main>
+  <main class="container">
+    <div class="app-toolbar">
+      <strong>{{ settings.app_title }}</strong>
+      <button type="button" class="secondary theme-toggle" id="theme-toggle" aria-pressed="false">Dark Mode</button>
+    </div>
+    {% if settings.cargoboard_environment is defined %}
+    <section class="card" aria-label="Cargoboard-Umgebung">
+      <form method="post" action="/cargoboard/environment" class="hero-actions">
+        <input type="hidden" name="switch_token" value="{{ cargoboard_switch_token }}">
+        <label>Cargoboard-Modus
+          <select name="environment">
+            <option value="test" {% if settings.cargoboard_environment != 'Produktion' %}selected{% endif %}>Test / Sandbox</option>
+            <option value="production" {% if settings.cargoboard_environment == 'Produktion' %}selected{% endif %}>Produktion</option>
+          </select>
+        </label>
+        <button type="submit" class="secondary">Modus wechseln</button>
+      </form>
+      <p><strong>{{ 'Produktion: Buchungen sind kostenpflichtige Transportaufträge.' if settings.cargoboard_environment == 'Produktion' else 'Testmodus: Es wird kein realer Transport ausgelöst.' }}</strong></p>
+      <p class="muted">{{ settings.cargoboard_base_url }} · {{ 'API-Key hinterlegt' if settings.has_cargoboard else 'API-Key für diese Umgebung fehlt' }}</p>
+      <p class="muted">Beim Wechsel bitte den Preis neu berechnen.</p>
+    </section>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    const themeToggle = document.getElementById('theme-toggle');
+    const updateThemeButton = () => {
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      themeToggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+      themeToggle.setAttribute('aria-label', isDark ? 'Light Mode aktivieren' : 'Dark Mode aktivieren');
+      themeToggle.setAttribute('aria-pressed', String(isDark));
+    };
+    updateThemeButton();
+    themeToggle.addEventListener('click', () => {
+      const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = theme;
+      try { localStorage.setItem('hermesbot-theme', theme); } catch (_) {}
+      updateThemeButton();
+    });
+  </script>
 </body>
 </html>

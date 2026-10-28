@@ -6,12 +6,21 @@
   <div>
     <p class="eyebrow">Speditionsauftrag</p>
     <h1>{{ order.name }}</h1>
-    <p class="muted">Mock-Flow für Kostenkalkulation und Auftragserstellung, bis die echte API bereit ist.</p>
+    <p class="muted">Cargoboard · {{ settings.cargoboard_environment }}</p>
   </div>
   <span class="status-pill {{ order.fulfillment_status|lower if order.fulfillment_status else 'unknown' }}">
     {{ order.fulfillment_status or 'unbekannt' }}
   </span>
 </section>
+
+{% if error %}
+<section class="card error" role="alert">
+  <h2>Preis konnte nicht berechnet oder Auftrag nicht bestätigt werden</h2>
+  <p>{{ error }}</p>
+  {% if validation_errors %}<ul>{% for message in validation_errors %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
+  <p>Deine Eingaben bleiben erhalten. Bitte die genannten Angaben prüfen und danach erneut Kosten berechnen.</p>
+</section>
+{% endif %}
 
 <section class="detail-grid">
   <article class="card info-card">
@@ -24,7 +33,7 @@
   </article>
   <article class="card info-card">
     <p class="eyebrow">Hinweis</p>
-    <p>Die API ist noch gemockt. Die Kosten werden lokal berechnet und später kann der echte Speditionsauftrag eingesteuert werden.</p>
+    <p>Zuerst Kosten berechnen und Versanddaten prüfen. Die anschließende Bestätigung bucht den Transport. {% if settings.cargoboard_environment == "Produktion" %}Produktivsystem: Die Buchung ist kostenpflichtig.{% endif %}</p>
   </article>
 </section>
 
@@ -48,6 +57,7 @@
           <span>{{ selected_pickup_address.street }}</span>
           <span>{{ selected_pickup_address.post_code }} {{ selected_pickup_address.city }}</span>
           <span>{{ selected_pickup_address.country_code }}</span>
+          {% if selected_pickup_address.phone %}<span>Telefon: {{ selected_pickup_address.phone }}</span>{% endif %}
         </div>
       {% endif %}
       <p class="muted">Weitere Abholadressen kannst du hier verwalten: <a href="/pickup-addresses">Abholadressen</a></p>
@@ -64,6 +74,9 @@
       <label>PLZ <input name="delivery_post_code" value="{{ form.delivery_post_code }}"></label>
       <label>Stadt <input name="delivery_city" value="{{ form.delivery_city }}"></label>
       <label>Land <input name="delivery_country_code" value="{{ form.delivery_country_code }}"></label>
+      <label class="checkbox-row"><input type="checkbox" name="private_customer" {% if form.private_customer %}checked{% endif %}> Privatkunde (mit Lieferavisierung)</label>
+      <label>Telefon <input name="delivery_phone" value="{{ form.delivery_phone }}"></label>
+      <label>E-Mail <input type="email" name="delivery_email" value="{{ form.delivery_email }}"></label>
     </article>
 
     <article class="card info-card">
@@ -75,61 +88,70 @@
       <label>Gewicht je Packstück (kg) <input type="number" min="0.1" step="0.1" name="package_weight_kg" value="{{ form.package_weight_kg }}"></label>
       <label>Packstück-Typ
         <select name="package_type">
-          <option value="PA" {% if form.package_type == 'PA' %}selected{% endif %}>Paket</option>
-          <option value="PL" {% if form.package_type == 'PL' %}selected{% endif %}>Palette</option>
-          <option value="DO" {% if form.package_type == 'DO' %}selected{% endif %}>Dokument</option>
-          <option value="BO" {% if form.package_type == 'BO' %}selected{% endif %}>Box</option>
+          <option value="PA" {% if form.package_type == 'PA' %}selected{% endif %}>Sonstiges Packstück</option>
+          {% for code, label in [('EP', 'Einwegpalette'), ('FP', 'Europalette'), ('GP', 'Gitterbox'), ('KI', 'Holzkiste'), ('KT', 'Karton')] %}
+          <option value="{{ code }}" {% if form.package_type == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
         </select>
       </label>
+      <p class="muted">Die Verpackungsart beeinflusst den Frachtpreis. Für eine Sendung im Karton bitte „Karton“ wählen.</p>
       <label>Inhalt <input name="package_content" value="{{ form.package_content }}"></label>
       <label>Service-Level
         <select name="service_level">
           <option value="standard" {% if form.service_level == 'standard' %}selected{% endif %}>Standard</option>
           <option value="express" {% if form.service_level == 'express' %}selected{% endif %}>Express</option>
-          <option value="priority" {% if form.service_level == 'priority' %}selected{% endif %}>Priority</option>
         </select>
       </label>
       <label>Versicherung in EUR <input type="number" min="0" step="0.01" name="insurance_value_eur" value="{{ form.insurance_value_eur }}"></label>
       <label>Pickup-Datum <input type="date" name="pickup_date" value="{{ form.pickup_date }}"></label>
-      <label class="checkbox-row"><input type="checkbox" name="liftgate_required" {% if form.liftgate_required %}checked{% endif %}> Hebebühne nötig</label>
+      <label class="checkbox-row"><input type="checkbox" name="liftgate_required" {% if form.liftgate_required %}checked{% endif %}> Hebebühne bei Lieferung nötig</label>
     </article>
   </div>
 
   <label>Notizen <textarea name="notes" rows="4">{{ form.notes }}</textarea></label>
 
+  <label class="checkbox-row"><input type="checkbox" name="show_payload" value="true" {% if show_payload %}checked{% endif %} data-payload-toggle> JSON-Anfrage an Cargoboard als Text anzeigen</label>
+  {% if payload_json %}
+  <section class="card" data-payload-output {% if not show_payload %}hidden{% endif %}>
+    <h2>JSON-Anfrage an Cargoboard</h2>
+    <p class="muted">Das ist der Anfrageinhalt, der für Preisberechnung und Buchung verwendet wird.</p>
+    <pre><code>{{ payload_json }}</code></pre>
+  </section>
+  {% endif %}
+
   <div class="hero-actions">
     <button type="submit" name="action" value="quote" class="primary">Kosten berechnen</button>
-    <button type="submit" name="action" value="create" class="secondary">Auftrag erstellen</button>
+    {% if quote and draft.status == 'quoted' %}
+    <input type="hidden" name="quotation_token" value="{{ draft.quotation_token }}">
+    <button type="submit" name="action" value="create" class="secondary">{% if settings.cargoboard_environment == 'Produktion' %}Auftrag prüfen und buchen{% else %}Testauftrag bei Cargoboard buchen{% endif %}</button>
+    {% endif %}
   </div>
 </form>
 
+<script>
+  document.querySelectorAll('[data-payload-toggle]').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+      const output = document.querySelector('[data-payload-output]');
+      if (output) output.hidden = !checkbox.checked;
+    });
+  });
+</script>
+
 {% if quote %}
-  <section class="card">
-    <div class="section-head">
-      <div>
-        <p class="eyebrow">Kosten</p>
-        <h2>Berechnete Frachtkosten</h2>
-      </div>
-      <span class="status-pill fulfilled">{{ quote.currency }}</span>
-    </div>
-    <div class="detail-grid">
-      <article class="card info-card">
-        <dl class="meta-list">
-          <div><dt>Basis</dt><dd>{{ '%.2f'|format(quote.base) }} {{ quote.currency }}</dd></div>
-          <div><dt>Gewicht</dt><dd>{{ '%.2f'|format(quote.weight_surcharge) }} {{ quote.currency }}</dd></div>
-          <div><dt>Volumen</dt><dd>{{ '%.2f'|format(quote.volume_surcharge) }} {{ quote.currency }}</dd></div>
-        </dl>
-      </article>
-      <article class="card info-card">
-        <dl class="meta-list">
-          <div><dt>Service</dt><dd>{{ '%.2f'|format(quote.service_surcharge) }} {{ quote.currency }}</dd></div>
-          <div><dt>Versicherung</dt><dd>{{ '%.2f'|format(quote.insurance_surcharge) }} {{ quote.currency }}</dd></div>
-          <div><dt>Hebebühne</dt><dd>{{ '%.2f'|format(quote.liftgate_surcharge) }} {{ quote.currency }}</dd></div>
-        </dl>
-      </article>
-    </div>
-    <div class="total-price">Gesamt: {{ '%.2f'|format(quote.total) }} {{ quote.currency }}</div>
-    <p class="muted">Mock-Kalkulation, gültig bis {{ quote.valid_until }}.</p>
-  </section>
+<section class="card">
+  <h2>Berechnete Frachtkosten</h2>
+  <p>Angebot {{ quote.id }} · {{ quote.product }} · Abholung {{ quote.pickupOn }}</p>
+  <dl class="meta-list">
+    {% for item in quote.costItems or [] %}
+    <div><dt>{{ item.description }}</dt><dd>{{ '%.2f'|format(item.price.amount) }} {{ item.price.currency }} netto</dd></div>
+    {% endfor %}
+  </dl>
+  <div class="total-price">Gesamt: {{ '%.2f'|format(quote.price.amount) }} {{ quote.price.currency }} netto</div>
+  {% if quote.price.grossAmount is number and quote.price.vatAmount is number and quote.price.vatAmount > 0 %}<p>{{ '%.2f'|format(quote.price.grossAmount) }} {{ quote.price.currency }} inkl. MwSt.</p>{% endif %}
+  <p class="muted">Vor der Buchung alle Angaben oben prüfen. Bei Änderungen zuerst neu berechnen. Bestätigung innerhalb von 15 Minuten erforderlich.</p>
+</section>
+{% endif %}
+{% if draft and draft.status in ['ordered', 'booking', 'booking_unknown'] %}
+<section class="card"><p>Status: {{ draft.status }}. Vor weiteren Aktionen den Auftrag im Cargoboard-Portal prüfen.</p></section>
 {% endif %}
 {% endblock %}

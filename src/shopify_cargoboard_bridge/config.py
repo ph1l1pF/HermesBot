@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
 
@@ -53,6 +53,9 @@ def normalize_shop_domain(value: str) -> str:
     return shop
 
 
+CARGOBOARD_URLS = {"test": "https://api-sandbox.cargoboard.com", "production": "https://api.cargoboard.com"}
+
+
 @dataclass(frozen=True)
 class Settings:
     shopify_shop: str = normalize_shop_domain(env("SHOPIFY_SHOP_DOMAIN", default=""))
@@ -65,6 +68,9 @@ class Settings:
     shopify_auth_path: Path = Path(env("SHOPIFY_AUTH_PATH", default=str(Path.home() / ".hermes" / "shopify_auth.json")))
     pickup_addresses_path: Path = Path(env("PICKUP_ADDRESSES_PATH", default=str(Path.home() / ".hermes" / "pickup_addresses.json")))
     cargoboard_api_key: str = env("CARGOBOARD_API_KEY")
+    cargoboard_sandbox_api_key: str = env("CARGOBOARD_SANDBOX_API_KEY")
+    cargoboard_production_api_key: str = env("CARGOBOARD_PRODUCTION_API_KEY")
+    cargoboard_initial_mode: str = env("CARGOBOARD_ENVIRONMENT")
     cargoboard_base_url: str = env("CARGOBOARD_BASE_URL", default="https://api-sandbox.cargoboard.com")
     billing_name: str = env("BILLING_NAME")
     billing_street: str = env("BILLING_STREET")
@@ -89,3 +95,19 @@ class Settings:
     @property
     def has_billing_address(self) -> bool:
         return all([self.billing_name, self.billing_street, self.billing_city, self.billing_post_code, self.billing_country])
+
+    @property
+    def cargoboard_environment(self) -> str:
+        return "Produktion" if self.cargoboard_base_url.rstrip("/") == "https://api.cargoboard.com" else "Sandbox"
+
+    @property
+    def cargoboard_mode(self) -> str:
+        return "production" if self.cargoboard_base_url.rstrip("/") == CARGOBOARD_URLS["production"] else "test"
+
+    def for_cargoboard_environment(self, mode: str) -> "Settings":
+        target = CARGOBOARD_URLS[mode]
+        key = self.cargoboard_production_api_key if mode == "production" else self.cargoboard_sandbox_api_key
+        # A legacy key remains bound to its original configured URL.
+        if not key and self.cargoboard_base_url.rstrip("/") == target:
+            key = self.cargoboard_api_key
+        return replace(self, cargoboard_base_url=target, cargoboard_api_key=key)

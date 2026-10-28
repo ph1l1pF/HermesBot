@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<a class="back-link" href="/">← Zurück zu HermesBot</a>
+<section class="card">
+  <p class="eyebrow">Cargoboard · {{ settings.cargoboard_environment }}</p>
+  <h1>{{ 'Verbindung noch nicht bestätigt' if error else 'Verbindung erfolgreich' }}</h1>
+  {% if error %}
+  <p class="error">{{ error }}</p>
+  <p>Bei wiederholten Zeitüberschreitungen den Cargoboard-Support um Prüfung der API-Erreichbarkeit und Kontofreischaltung bitten. Den API-Key nicht mitsenden.</p>
+  {% else %}
+  <p>Der Zugriff auf die Angebotsliste funktioniert.</p>
+  {% endif %}
+  <p class="muted">Dieser Test liest nur Daten und bucht keinen Transport.</p>
+  <form method="post" action="/cargoboard/check"><button type="submit">Erneut prüfen</button></form>
+</section>
+{% endblock %}

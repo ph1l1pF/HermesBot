@@ -13,15 +13,6 @@
   </span>
 </section>
 
-{% if error %}
-<section class="card error" role="alert">
-  <h2>Preis konnte nicht berechnet oder Auftrag nicht bestätigt werden</h2>
-  <p>{{ error }}</p>
-  {% if validation_errors %}<ul>{% for message in validation_errors %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}
-  <p>Deine Eingaben bleiben erhalten. Bitte die genannten Angaben prüfen und danach erneut Kosten berechnen.</p>
-</section>
-{% endif %}
-
 <section class="detail-grid">
   <article class="card info-card">
     <p class="eyebrow">Bestellung</p>
@@ -37,7 +28,12 @@
   </article>
 </section>
 
-<form method="post" action="/orders/{{ order.id }}/shipment" class="form-stack">
+<div id="quote-feedback" aria-live="polite">{% if error %}<section class="card error" role="alert"><h2>Preis konnte nicht berechnet oder Auftrag nicht bestätigt werden</h2><p>{{ error }}</p>{% if validation_errors %}<ul>{% for message in validation_errors %}<li>{{ message }}</li>{% endfor %}</ul>{% endif %}<p>Deine Eingaben bleiben erhalten. Bitte die genannten Angaben prüfen und danach erneut Kosten berechnen.</p></section>{% endif %}</div>
+<div id="quote-loading" class="card quote-loading" role="status" aria-live="polite" hidden>
+  <span class="loading-spinner" aria-hidden="true"></span>
+  <span>Kosten werden bei Cargoboard angefragt …</span>
+</div>
+<form method="post" action="/orders/{{ order.id }}/shipment" class="form-stack" id="shipment-form">
   <section class="card info-card">
     <p class="eyebrow">Abholadresse</p>
     {% if pickup_addresses %}
@@ -128,15 +124,7 @@
   </div>
 </form>
 
-<script>
-  document.querySelectorAll('[data-payload-toggle]').forEach((checkbox) => {
-    checkbox.addEventListener('change', () => {
-      const output = document.querySelector('[data-payload-output]');
-      if (output) output.hidden = !checkbox.checked;
-    });
-  });
-</script>
-
+<div id="quote-output" aria-live="polite">
 {% if quote %}
 <section class="card">
   <h2>Berechnete Frachtkosten</h2>
@@ -151,6 +139,70 @@
   <p class="muted">Vor der Buchung alle Angaben oben prüfen. Bei Änderungen zuerst neu berechnen. Bestätigung innerhalb von 15 Minuten erforderlich.</p>
 </section>
 {% endif %}
+</div>
+
+<script>
+  document.querySelectorAll('[data-payload-toggle]').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+      const output = document.querySelector('[data-payload-output]');
+      if (output) output.hidden = !checkbox.checked;
+    });
+  });
+
+  const shipmentForm = document.querySelector('#shipment-form');
+  shipmentForm?.addEventListener('submit', async (event) => {
+    if (event.submitter?.name !== 'action' || event.submitter.value !== 'quote') return;
+    event.preventDefault();
+    const button = event.submitter;
+    const originalLabel = button.textContent;
+    const feedback = document.querySelector('#quote-feedback');
+    const loading = document.querySelector('#quote-loading');
+    button.disabled = true;
+    loading.hidden = false;
+    shipmentForm.setAttribute('aria-busy', 'true');
+    feedback.replaceChildren();
+    try {
+      const response = await fetch(shipmentForm.getAttribute('action'), {
+        method: 'POST',
+        headers: { 'Accept': 'text/html' },
+        body: new FormData(shipmentForm),
+      });
+      const html = await response.text();
+      const resultDocument = new DOMParser().parseFromString(html, 'text/html');
+      if (!response.ok) {
+        const error = resultDocument.querySelector('.card.error');
+        if (error) feedback.replaceChildren(error.cloneNode(true));
+        else throw new Error('Die Anfrage konnte nicht abgeschlossen werden.');
+        feedback.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
+      const newQuote = resultDocument.querySelector('#quote-output');
+      if (newQuote) document.querySelector('#quote-output').replaceChildren(...newQuote.cloneNode(true).childNodes);
+      const oldToken = shipmentForm.querySelector('input[name="quotation_token"]');
+      const oldBookButton = shipmentForm.querySelector('button[name="action"][value="create"]');
+      const newToken = resultDocument.querySelector('input[name="quotation_token"]');
+      const newBookButton = resultDocument.querySelector('button[name="action"][value="create"]');
+      oldToken?.remove();
+      oldBookButton?.remove();
+      if (newToken && newBookButton) {
+        shipmentForm.querySelector('.hero-actions').append(newToken.cloneNode(true), newBookButton.cloneNode(true));
+      }
+      feedback.replaceChildren();
+      document.querySelector('#quote-output').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (error) {
+      const card = document.createElement('section');
+      card.className = 'card error';
+      card.setAttribute('role', 'alert');
+      card.textContent = 'Die Anfrage konnte nicht abgeschlossen werden. Bitte prüfe deine Verbindung und versuche es erneut.';
+      feedback.replaceChildren(card);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalLabel;
+      loading.hidden = true;
+      shipmentForm.removeAttribute('aria-busy');
+    }
+  });
+</script>
 {% if draft and draft.status in ['ordered', 'booking', 'booking_unknown'] %}
 <section class="card"><p>Status: {{ draft.status }}. Vor weiteren Aktionen den Auftrag im Cargoboard-Portal prüfen.</p></section>
 {% endif %}
